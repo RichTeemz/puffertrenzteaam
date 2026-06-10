@@ -28,7 +28,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 # ── ENV ───────────────────────────────────────────────────────────────────────
-BOT_TOKEN         = os.environ.get("TELEGRAM_BOT_TOKEN", "8787040045:AAGkIqS9EM2WOJVY0gkw9lE3USwRIGfv0")
+BOT_TOKEN         = os.environ.get("TELEGRAM_BOT_TOKEN", "8787040045:AAEJP1lPtmN_hUFnpa9A8aCD17UcCHN-Oyc")
 CHAT_ID           = os.environ.get("TELEGRAM_CHAT_ID", "-1001003994052181")
 GEMINI_API_KEY    = os.environ.get("GEMINI_API_KEY", "AQAb8RN6Ia1DmeoxlHyL55znarVKiemqPH6FINNcEYzJXUAxR1w")
 CRYPTOPANIC_KEY   = os.environ.get("CRYPTOPANIC_API_KEY", "")   # optional
