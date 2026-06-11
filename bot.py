@@ -707,57 +707,50 @@ async def cmd_meme(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await post_meme(context)
 
 # ── SCHEDULE ──────────────────────────────────────────────────────────────────
+
+# Weighted post rotation — higher weight = posted more frequently
+POST_ROTATION = [
+    (post_news,                 3),
+    (post_dex_trending,         3),
+    (post_market_update,        2),
+    (post_meme,                 2),
+    (post_educational,          2),
+    (post_motivational,         1),
+    (post_poll,                 1),
+    (post_airdrop,              1),
+    (post_web3_insight,         1),
+    (post_debate,               1),
+    (post_twitter_moment,       1),
+    (post_community_challenge,  1),
+    (post_coin_launch_tease,    1),
+    (post_shoutout,             1),
+    (post_market_recap,         1),
+]
+
+# Flat weighted list built once at module level
+_WEIGHTED_POSTS = [fn for fn, w in POST_ROTATION for _ in range(w)]
+
+
+async def auto_post(context: ContextTypes.DEFAULT_TYPE):
+    """Pick a random post type and fire it — called every 5–10 minutes."""
+    fn = random.choice(_WEIGHTED_POSTS)
+    log.info("⏱ Auto-post: %s", fn.__name__)
+    await fn(context)
+
+
 def schedule_all(app: Application):
     jq = app.job_queue
 
-    # Morning
-    jq.run_daily(post_gm,               dtime(6, 0),  name="gm")
-    jq.run_daily(post_market_update,    dtime(7, 0),  name="market_am")
-    jq.run_daily(post_dex_trending,     dtime(7, 30), name="dex_am")
-    jq.run_daily(post_news,             dtime(8, 0),  name="news_1")
-    jq.run_daily(post_meme,             dtime(8, 30), name="meme_am")
-    jq.run_daily(post_poll,             dtime(9, 0),  name="poll_am")
+    # Daily anchor posts (GM + end-of-day recap keep a natural rhythm)
+    jq.run_daily(post_gm,           dtime(6, 0),  name="gm_daily")
+    jq.run_daily(post_market_recap, dtime(21, 0), name="recap_daily")
 
-    # Midday
-    jq.run_daily(post_educational,      dtime(10, 0), name="edu")
-    jq.run_daily(post_news,             dtime(10, 30),name="news_2")
-    jq.run_daily(post_web3_insight,     dtime(11, 0), name="web3")
-    jq.run_daily(post_airdrop,          dtime(11, 30),name="airdrop")
-    jq.run_daily(post_market_update,    dtime(12, 0), name="market_noon")
-    jq.run_daily(post_twitter_moment,   dtime(12, 30),name="twitter")
+    # Core loop: post every 5–10 minutes (random interval each cycle)
+    # `run_repeating` uses a fixed interval, so we pick the midpoint (450 s)
+    # and let the human_delay() inside each post add natural jitter on top.
+    jq.run_repeating(auto_post, interval=450, first=30, name="auto_post_loop")
 
-    # Afternoon
-    jq.run_daily(post_debate,           dtime(13, 0), name="debate")
-    jq.run_daily(post_news,             dtime(13, 30),name="news_3")
-    jq.run_daily(post_dex_trending,     dtime(14, 0), name="dex_pm")
-    jq.run_daily(post_motivational,     dtime(14, 30),name="motivate_pm")
-    jq.run_daily(post_meme,             dtime(15, 0), name="meme_pm")
-    jq.run_daily(post_community_challenge, dtime(15, 30), name="challenge")
-    jq.run_daily(post_coin_launch_tease,dtime(16, 0), name="launch_tease")
-    jq.run_daily(post_news,             dtime(16, 30),name="news_4")
-
-    # Evening
-    jq.run_daily(post_educational,      dtime(17, 0), name="edu_pm")
-    jq.run_daily(post_poll,             dtime(17, 30),name="poll_pm")
-    jq.run_daily(post_twitter_moment,   dtime(18, 0), name="twitter_pm")
-    jq.run_daily(post_airdrop,          dtime(18, 30),name="airdrop_pm")
-    jq.run_daily(post_market_update,    dtime(19, 0), name="market_eve")
-    jq.run_daily(post_news,             dtime(19, 30),name="news_5")
-
-    # Night
-    jq.run_daily(post_motivational,     dtime(20, 0), name="motivate_night")
-    jq.run_daily(post_meme,             dtime(20, 30),name="meme_night")
-    jq.run_daily(post_market_recap,     dtime(21, 0), name="recap")
-    jq.run_daily(post_shoutout,         dtime(21, 30),name="shoutout")
-    jq.run_daily(post_dex_trending,     dtime(22, 0), name="dex_night")
-
-    # News burst every 25 minutes
-    jq.run_repeating(post_news,         interval=1500, first=120, name="news_burst")
-
-    # Market data every 45 minutes
-    jq.run_repeating(post_dex_trending, interval=2700, first=300, name="dex_burst")
-
-    log.info("✅ Full schedule loaded — %d jobs", len(jq.jobs()))
+    log.info("✅ Schedule loaded — posting every ~5–10 min (%d jobs)", len(jq.jobs()))
 
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 def main():
